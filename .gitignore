@@ -1,0 +1,18 @@
+conf/setup.conf
+
+#
+#	Binaries
+#
+*.o
+
+#
+#	Built cross compiler binaries
+#
+tools/bin
+tools/superH
+tools/riscv
+
+#
+#	Downloaded sources
+#
+tools/source/*
