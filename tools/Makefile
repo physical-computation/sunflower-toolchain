@@ -76,15 +76,14 @@ gcc-post:
 newlib: newlib-pre newlib-post
 
 newlib-pre:
-	export PATH=$(PATH):$(TOOLS)/$(TARGET)/bin:$(TOOLS)/bin;\
 	if test -d $(TOOLS)/bin; then true; else mkdir $(TOOLS)/bin; fi;\
 	if test -d $(TOOLS)/$(TARGET); then true; else mkdir $(TOOLS)/$(TARGET); fi;\
 	cd $(NEWLIB);\
 	$(DEL) objdir; mkdir -p objdir; cd objdir;\
 	../configure --target=$(TARGET-ARCH) --prefix=$(PREFIX)\
 		-v --with-stabs --nfp --disable-multilib;\
-	$(MAKE) -j5 CC=$(TOOLCC) all;\
-	$(MAKE) CC=$(TOOLCC) install;\
+	$(MAKE) PATH=$(PATH):$(TOOLS)/$(TARGET)/bin:$(TOOLS)/bin; -j5 CC=$(TOOLCC) all;\
+	$(MAKE) PATH=$(PATH):$(TOOLS)/$(TARGET)/bin:$(TOOLS)/bin; CC=$(TOOLCC) install;\
 
 newlib-post:
 	cp $(PREFIX)/$(TARGET-ARCH)/lib/*.a $(SUNFLOWERROOT)/tools/tools-lib/$(TARGET)/;\
