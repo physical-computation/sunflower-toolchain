@@ -19,7 +19,7 @@ Step 3
 
 + Due to some bugs in the `binutils` documentation `texinfo` files, which are caught by newer versions of `makeinfo`, you must make sure that your version of `makeinfo` is older than 5.0 (or you can temporarily make `makeinfo` unexecutable so that the build skips generating the man pages).
 
-+ Next, type 'make cross-all' (see NOTE below!) from the root of the installation (the directory containing this README file). That will start the process of configuring the aforementioned distributions to build the cross-compilers for all the supported architectures. See the makefile for the build targets to build just one of the cross-compilers.
++ Next, type `make cross-all` (see NOTE below!) from the root of the installation (the directory containing this README file). That will start the process of configuring the aforementioned distributions to build the cross-compilers for all the supported architectures. See the makefile for the build targets to build just one of the cross-compilers.
 
 + On Mac OS 10.5 and older versions of macOS, you may need to do `make cross-all CFLAGS=-Os` instead of just `make cross-all` to prevent the build of the cross-compiler from generating `.dylib` debugging symbol files, which currently causes many problems with autoconf related tools.
 
