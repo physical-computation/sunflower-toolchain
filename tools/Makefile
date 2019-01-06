@@ -82,12 +82,12 @@ newlib-pre:
 	$(DEL) objdir; mkdir -p objdir; cd objdir;\
 	../configure --target=$(TARGET-ARCH) --prefix=$(PREFIX)\
 		-v --with-stabs --nfp --disable-multilib;\
-	$(MAKE) PATH=$(PATH):$(TOOLS)/$(TARGET)/bin:$(TOOLS)/bin; -j5 CC=$(TOOLCC) all;\
-	$(MAKE) PATH=$(PATH):$(TOOLS)/$(TARGET)/bin:$(TOOLS)/bin; CC=$(TOOLCC) install;\
+	$(MAKE) PATH=$(PATH):$(TOOLS)/$(TARGET)/bin:$(TOOLS)/bin -j5 CC=$(TOOLCC) all;\
+	$(MAKE) PATH=$(PATH):$(TOOLS)/$(TARGET)/bin:$(TOOLS)/bin CC=$(TOOLCC) install;\
 
 newlib-post:
 	cp $(PREFIX)/$(TARGET-ARCH)/lib/*.a $(SUNFLOWERROOT)/tools/tools-lib/$(TARGET)/;\
-	#$(DEL) $(NEWLIB)/objdir;\
+	$(DEL) $(NEWLIB)/objdir;\
 
 
 
