@@ -2,6 +2,10 @@ include conf/setup.conf
 
 Z		= $(PATH):$(SUNFLOWERROOT)/tools/bin
 
+cross-arm:
+	cd $(TOOLS); $(MAKE) PATH=$(Z)\
+	TARGET=arm TARGET-ARCH=arm-none-eabi ADDITIONAL_ARCH_FLAGS="" all;\
+
 cross-superH:
 	cd $(TOOLS); $(MAKE) PATH=$(Z)\
 	TARGET=superH TARGET-ARCH=sh-elf ADDITIONAL_ARCH_FLAGS="" all;\
