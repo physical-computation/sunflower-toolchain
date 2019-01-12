@@ -8,7 +8,7 @@ cross-arm:
 
 cross-superH:
 	cd $(TOOLS); $(MAKE) PATH=$(Z)\
-	TARGET=superH TARGET-ARCH=sh-elf ADDITIONAL_ARCH_FLAGS="" all;\
+	TARGET=superH TARGET-ARCH=sh-elf ADDITIONAL_ARCH_FLAGS="--disable-multilib" all;\
 
 cross-riscv:
 	cd $(TOOLS); $(MAKE) PATH=$(Z)\
@@ -16,7 +16,7 @@ cross-riscv:
 
 cross-all:
 	cd $(TOOLS); $(MAKE) PATH=$(Z)\
-	TARGET=superH TARGET-ARCH=sh-elf all;\
+	TARGET=superH TARGET-ARCH=sh-elf ADDITIONAL_ARCH_FLAGS="--disable-multilib"all;\
 	cd $(TOOLS); $(MAKE) PATH=$(Z)\
 	TARGET=riscv TARGET-ARCH=riscv32-elf ADDITIONAL_ARCH_FLAGS="--with-arch=rv32ifd" all;\
 	cd $(TOOLS); $(MAKE) PATH=$(Z)\
