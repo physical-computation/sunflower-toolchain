@@ -5,6 +5,9 @@ Z		= $(PATH):$(SUNFLOWERROOT)/tools/bin
 #
 #	See
 #		https://gcc-help.gcc.gnu.narkive.com/9QCu0XlU/gcc-with-cortex-m4-hard-float-link-error-x-uses-vfp-register-arguments-y-does-not
+#	and
+#		https://stackoverflow.com/questions/16768235/cortex-m4-gcc-float-behavior
+#
 #	for a good coverage of ARM build flags and multilib.
 #
 cross-arm:
