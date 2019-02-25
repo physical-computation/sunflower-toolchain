@@ -4,6 +4,7 @@ conf/setup.conf
 #	Binaries
 #
 *.o
+*.a
 
 #
 #	Built cross compiler binaries
