@@ -12,7 +12,7 @@ Building the gcc cross-compilers depends on `wget`, `gcc`, `libmpc`, `mpfr`, `gm
 
 Step 2
 ------
-Edit `conf/setup.conf` and set `$SUNFLOWERROOT`, `TOOLCC`, and `TOOLCXX` appropriately. You will need to set your `$OSTYPE` environment variable in your shell if it is not already set.  Examples include `darwin` for MacOSX, and the eponymous `OpenBSD`, `linux`, and `solaris`. You will also need to set `MACHTYPE`. A common correct value (depends on your host platform) is `i386`.
+Edit `conf/setup.conf` and set `SUNFLOWERROOT`, `TOOLCC`, and `TOOLCXX` appropriately. You will need to set your `$OSTYPE` environment variable in your shell if it is not already set.  Examples include `darwin` for MacOSX, and the eponymous `OpenBSD`, `linux`, and `solaris`. You will also need to set `MACHTYPE`. A common correct value (depends on your host platform) is `i386`.
 
 
 Step 3
