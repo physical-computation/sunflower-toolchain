@@ -1,0 +1,279 @@
+diff --git a/gas/config/tc-riscv.c b/gas/config/tc-riscv.c
+index 99316156..d236bf04 100644
+--- a/gas/config/tc-riscv.c
++++ b/gas/config/tc-riscv.c
+@@ -241,6 +241,13 @@ create_insn (struct riscv_cl_insn *insn, const struct riscv_opcode *mo)
+   insn->frag = NULL;
+   insn->where = 0;
+   insn->fixp = NULL;
++
++
++  if ((mo->pinfo & INSN_UNCERTAINTY_AWARE) && (mo->pinfo != INSN_MACRO))
++  {
++    insn->insn_opcode = (mo->match << 32) | (mo->match >> 32);
++  }
++
+ }
+ 
+ /* Install INSN at the location specified by its "frag" and "where" fields.  */
+@@ -358,7 +365,7 @@ static const struct opcode_name_t opcode_name_list[] =
+   {"OP",        0x33},
+   {"LUI",       0x37},
+   {"OP_32",     0x3b},
+-  /* 64b        0x3f.  */
++  {"64b",       0x3f},
+ 
+   {"MADD",      0x43},
+   {"MSUB",      0x47},
+@@ -563,6 +570,12 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
+       return FALSE;
+     }
+ 
++  if (opc->pinfo & INSN_UNCERTAINTY_AWARE)
++    {
++      used_bits = (used_bits << 32) | (used_bits >> 32);
++    }
++
++
+ #define USE_BITS(mask,shift)	(used_bits |= ((insn_t)(mask) << (shift)))
+   while (*p)
+     switch (c = *p++)
+@@ -637,6 +650,7 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
+       case 's':	USE_BITS (OP_MASK_RS1,		OP_SH_RS1);	break;
+       case 't':	USE_BITS (OP_MASK_RS2,		OP_SH_RS2);	break;
+       case 'r':	USE_BITS (OP_MASK_RS3,          OP_SH_RS3);     break;
++      case 'b':	USE_BITS (OP_MASK_UNCERTAINTY_MEMORY_SOURCE, OP_SH_UNCERTAINTY_MEMORY_SOURCE); break;
+       case 'P':	USE_BITS (OP_MASK_PRED,		OP_SH_PRED); break;
+       case 'Q':	USE_BITS (OP_MASK_SUCC,		OP_SH_SUCC); break;
+       case 'o':
+@@ -645,6 +659,7 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
+       case 'p':	used_bits |= ENCODE_SBTYPE_IMM (-1U); break;
+       case 'q':	used_bits |= ENCODE_STYPE_IMM (-1U); break;
+       case 'u':	used_bits |= ENCODE_UTYPE_IMM (-1U); break;
++      case 'f':	used_bits |= ((uint64_t)ENCODE_ITYPE_IMM (-1U) << 32); break;
+       case 'z': break;
+       case '[': break;
+       case ']': break;
+@@ -682,6 +697,14 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
+ 	return FALSE;
+       }
+ #undef USE_BITS
++
++  /* Swap high and low words back to their proper places
++     for better error messages  */
++  if (opc->pinfo & INSN_UNCERTAINTY_AWARE)
++    {
++      used_bits = (used_bits << 32) | (used_bits >> 32);
++    }
++
+   if (used_bits != required_bits)
+     {
+       as_bad (_("internal: bad RISC-V opcode (bits 0x%lx undefined): %s %s"),
+@@ -1416,7 +1439,12 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
+ 	    case '\0': 	/* End of args.  */
+ 	      if (insn->pinfo != INSN_MACRO)
+ 		{
+-		  if (!insn->match_func (insn, ip->insn_opcode))
++		  insn_t word = ip->insn_opcode;
++		  if ((insn->pinfo & INSN_UNCERTAINTY_AWARE) && insn->pinfo != INSN_MACRO)
++		  {
++		    word = (word << 32) | (word >> 32);
++		  }
++		  if (!insn->match_func (insn, word))
+ 		    break;
+ 
+ 		  /* For .insn, insn->match and insn->mask are 0.  */
+@@ -1809,6 +1837,7 @@ rvc_lui:
+ 	    case 's':		/* Source register.  */
+ 	    case 't':		/* Target register.  */
+ 	    case 'r':		/* rs3.  */
++	    case 'b':		/* Uncertainty memory source register  */
+ 	      if (reg_lookup (&s, RCLASS_GPR, &regno))
+ 		{
+ 		  c = *args;
+@@ -1831,6 +1860,9 @@ rvc_lui:
+ 		    case 'r':
+ 		      INSERT_OPERAND (RS3, *ip, regno);
+ 		      break;
++		    case 'b':
++		      INSERT_OPERAND (UNCERTAINTY_MEMORY_SOURCE, *ip, regno);
++		      break;
+ 		    }
+ 		  continue;
+ 		}
+@@ -1911,6 +1943,10 @@ rvc_lui:
+ 	      p = percent_op_itype;
+ 	      *imm_reloc = BFD_RELOC_RISCV_LO12_I;
+ 	      goto load_store;
++	    case 'f': /* Load displacement.  */
++	      p = percent_op_itype;
++	      *imm_reloc = BFD_RELOC_RISCV_LO12_I;
++	      goto load_store;
+ 	    case '1': /* 4-operand add, must be %tprel_add.  */
+ 	      p = percent_op_rtype;
+ 	      goto alu_op;
+@@ -2117,6 +2153,11 @@ md_assemble (char *str)
+       return;
+     }
+ 
++  if ((insn.insn_mo->pinfo & INSN_UNCERTAINTY_AWARE) && (insn.insn_mo->pinfo != INSN_MACRO))
++    {
++      insn.insn_opcode = (insn.insn_opcode << 32) | (insn.insn_opcode >> 32);
++    }
++
+   if (insn.insn_mo->pinfo == INSN_MACRO)
+     macro (&insn, &imm_expr, &imm_reloc);
+   else
+diff --git a/include/opcode/riscv-opc.h b/include/opcode/riscv-opc.h
+index f09200c0..424fb25d 100644
+--- a/include/opcode/riscv-opc.h
++++ b/include/opcode/riscv-opc.h
+@@ -829,6 +829,46 @@
+ #define CAUSE_SUPERVISOR_ECALL 0x9
+ #define CAUSE_HYPERVISOR_ECALL 0xa
+ #define CAUSE_MACHINE_ECALL 0xb
++
++
++#define UNCERTAIN_MATCH(BASE, UN) ((((uint64_t)BASE) << 32u) | UN)
++#define UNCERTAIN_MASK(BASE, UN) ((((uint64_t)BASE) << 32u) | UN)
++
++#define MATCH_UNFADD_S      UNCERTAIN_MATCH(MATCH_FADD_S,      0x000070BF)
++#define MASK_UNFADD_S       UNCERTAIN_MASK(MASK_FADD_S,        0xFFFFFFFF)
++#define MATCH_UNFSUB_S      UNCERTAIN_MATCH(MATCH_FSUB_S,      0x000070BF)
++#define MASK_UNFSUB_S       UNCERTAIN_MASK(MASK_FSUB_S,        0xFFFFFFFF)
++#define MATCH_UNFMUL_S      UNCERTAIN_MATCH(MATCH_FMUL_S,      0x000070BF)
++#define MASK_UNFMUL_S       UNCERTAIN_MASK(MASK_FMUL_S,        0xFFFFFFFF)
++#define MATCH_UNFDIV_S      UNCERTAIN_MATCH(MATCH_FDIV_S,      0x000070BF)
++#define MASK_UNFDIV_S       UNCERTAIN_MASK(MASK_FDIV_S,        0xFFFFFFFF)
++#define MATCH_UNFSGNJ_S     UNCERTAIN_MATCH(MATCH_FSGNJ_S,     0x000070BF)
++#define MASK_UNFSGNJ_S      UNCERTAIN_MASK(MASK_FSGNJ_S,       0xFFFFFFFF)
++#define MATCH_UNFSGNJN_S    UNCERTAIN_MATCH(MATCH_FSGNJN_S,    0x000070BF)
++#define MASK_UNFSGNJN_S     UNCERTAIN_MASK(MASK_FSGNJN_S,      0xFFFFFFFF)
++#define MATCH_UNFSGNJX_S    UNCERTAIN_MATCH(MATCH_FSGNJX_S,    0x000070BF)
++#define MASK_UNFSGNJX_S     UNCERTAIN_MASK(MASK_FSGNJX_S,      0xFFFFFFFF)
++#define MATCH_UNFMIN_S      UNCERTAIN_MATCH(MATCH_FMIN_S,      0x000070BF)
++#define MASK_UNFMIN_S       UNCERTAIN_MASK(MASK_FMIN_S,        0xFFFFFFFF)
++#define MATCH_UNFMAX_S      UNCERTAIN_MATCH(MATCH_FMAX_S,      0x000070BF)
++#define MASK_UNFMAX_S       UNCERTAIN_MASK(MASK_FMAX_S,        0xFFFFFFFF)
++#define MATCH_UNFSQRT_S     UNCERTAIN_MATCH(MATCH_FSQRT_S,     0x000070BF)
++#define MASK_UNFSQRT_S      UNCERTAIN_MASK(MASK_FSQRT_S,       0xFFFFFFFF)
++
++#define MATCH_UNFLW         UNCERTAIN_MATCH(MATCH_FLW,         0x000070BF)
++#define MASK_UNFLW          UNCERTAIN_MASK(MASK_FLW,           0x00007FFF)
++#define MATCH_UNFSW         UNCERTAIN_MATCH(MATCH_FSW,         0x000070BF)
++#define MASK_UNFSW          UNCERTAIN_MASK(MASK_FSW,           0x00007FFF)
++
++#define MATCH_UNUPG_S  0x38000053
++#define MASK_UNUPG_S   0xfe00007f
++#define MATCH_UNGCOV_S 0x78000053
++#define MASK_UNGCOV_S  0xfe00007f
++#define MATCH_UNSVAR_S 0xb8000053
++#define MASK_UNSVAR_S  0xfff0007f
++#define MATCH_UNCVAR_S 0xf8000053
++#define MASK_UNCVAR_S  0xfffff07f
++
+ #endif
+ #ifdef DECLARE_INSN
+ DECLARE_INSN(slli_rv32, MATCH_SLLI_RV32, MASK_SLLI_RV32)
+diff --git a/include/opcode/riscv.h b/include/opcode/riscv.h
+index 4acc25ce..98ffb6a3 100644
+--- a/include/opcode/riscv.h
++++ b/include/opcode/riscv.h
+@@ -222,6 +222,8 @@ static const char * const riscv_pred_succ[16] =
+ #define OP_SH_AQ		26
+ #define OP_MASK_RL		0x1
+ #define OP_SH_RL		25
++#define OP_MASK_UNCERTAINTY_MEMORY_SOURCE		0x1F
++#define OP_SH_UNCERTAINTY_MEMORY_SOURCE		47
+ 
+ #define OP_MASK_CUSTOM_IMM	0x7f
+ #define OP_SH_CUSTOM_IMM	25
+@@ -334,7 +336,7 @@ struct riscv_opcode
+    Nonbranch is the default.  Noninsn is used only if there is no match.
+    There are no condjsr or dref2 instructions.  So that leaves condbranch,
+    branch, jsr, and dref that we need to handle here, encoded in 3 bits.  */
+-#define INSN_TYPE		0x0000000e
++#define INSN_TYPE		0x0000008e
+ 
+ /* Instruction is an unconditional branch.  */
+ #define INSN_BRANCH		0x00000002
+@@ -354,6 +356,12 @@ struct riscv_opcode
+ #define INSN_8_BYTE		0x00000040
+ #define INSN_16_BYTE		0x00000050
+ 
++/* Instruction is a 64 bit uncertainty aware instruction. The upper
++   32 bits are a conventional instruction and the lower 32 bits
++   identify it as an uncertainty instruction. It is assembled in reverse
++   order and then swapped.  */
++#define INSN_UNCERTAINTY_AWARE 0x00000080
++
+ /* Instruction is actually a macro.  It should be ignored by the
+    disassembler, and requires special treatment by the assembler.  */
+ #define INSN_MACRO		0xffffffff
+diff --git a/opcodes/riscv-dis.c b/opcodes/riscv-dis.c
+index 764c4d4d..5d2768ae 100644
+--- a/opcodes/riscv-dis.c
++++ b/opcodes/riscv-dis.c
+@@ -433,6 +433,14 @@ riscv_disassemble_insn (bfd_vma memaddr, insn_t word, disassemble_info *info)
+ 	  if ((op->xlen_requirement != 0) && (op->xlen_requirement != xlen))
+ 	    continue;
+ 
++		/* Is this a 64 bit uncertainty aware instruction? If so swap the
++		   upper and lower 32 bits of the word  */
++
++		if (op->pinfo & INSN_UNCERTAINTY_AWARE)
++			{
++				word = (word >> 32) | (word << 32);
++			}
++
+ 	  /* It's a match.  */
+ 	  (*info->fprintf_func) (info->stream, "%s", op->name);
+ 	  print_insn_args (op->args, word, memaddr, info);
+diff --git a/opcodes/riscv-opc.c b/opcodes/riscv-opc.c
+index 72e6b9d4..26e12b92 100644
+--- a/opcodes/riscv-opc.c
++++ b/opcodes/riscv-opc.c
+@@ -74,6 +74,7 @@ const char * const riscv_fpr_names_abi[NFPR] = {
+ #define MASK_RVC_IMM ENCODE_RVC_IMM (-1U)
+ #define MASK_UIMM ENCODE_UTYPE_IMM (-1U)
+ #define MASK_RM (OP_MASK_RM << OP_SH_RM)
++#define MASK_UNCERTAINTY_AWARE_RM ((uint64_t)MASK_RM << 32)
+ #define MASK_PRED (OP_MASK_PRED << OP_SH_PRED)
+ #define MASK_SUCC (OP_MASK_SUCC << OP_SH_SUCC)
+ #define MASK_AQ (OP_MASK_AQ << OP_SH_AQ)
+@@ -695,6 +696,35 @@ const struct riscv_opcode riscv_opcodes[] =
+ {"fcvt.q.lu", 64, {"Q", 0}, "D,s",  MATCH_FCVT_Q_LU | MASK_RM, MASK_FCVT_Q_L | MASK_RM, match_opcode, 0 },
+ {"fcvt.q.lu", 64, {"Q", 0}, "D,s,m",  MATCH_FCVT_Q_LU, MASK_FCVT_Q_LU, match_opcode, 0 },
+ 
++/* Uncertain instructions    */
++{"unfmv.s",    0, {"XUN", 0}, "D,U",  MATCH_UNFSGNJ_S, MASK_UNFSGNJ_S, match_rs1_eq_rs2, INSN_ALIAS | INSN_UNCERTAINTY_AWARE },
++{"unfneg.s",   0, {"XUN", 0}, "D,U",  MATCH_UNFSGNJN_S, MASK_UNFSGNJN_S, match_rs1_eq_rs2, INSN_ALIAS | INSN_UNCERTAINTY_AWARE },
++{"unfabs.s",   0, {"XUN", 0}, "D,U",  MATCH_UNFSGNJX_S, MASK_UNFSGNJX_S, match_rs1_eq_rs2, INSN_ALIAS | INSN_UNCERTAINTY_AWARE },
++{"unfsgnj.s",  0, {"XUN", 0}, "D,S,T",  MATCH_UNFSGNJ_S, MASK_UNFSGNJ_S, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfsgnjn.s", 0, {"XUN", 0}, "D,S,T",  MATCH_UNFSGNJN_S, MASK_UNFSGNJN_S, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfsgnjx.s", 0, {"XUN", 0}, "D,S,T",  MATCH_UNFSGNJX_S, MASK_UNFSGNJX_S, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfadd.s",   0, {"XUN", 0}, "D,S,T",  MATCH_UNFADD_S | MASK_UNCERTAINTY_AWARE_RM, MASK_UNFADD_S | MASK_UNCERTAINTY_AWARE_RM, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfadd.s",   0, {"XUN", 0}, "D,S,T,m",  MATCH_UNFADD_S, MASK_UNFADD_S, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfsub.s",   0, {"XUN", 0}, "D,S,T",  MATCH_UNFSUB_S | MASK_UNCERTAINTY_AWARE_RM, MASK_UNFSUB_S | MASK_UNCERTAINTY_AWARE_RM, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfsub.s",   0, {"XUN", 0}, "D,S,T,m",  MATCH_UNFSUB_S, MASK_UNFSUB_S, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfmul.s",   0, {"XUN", 0}, "D,S,T",  MATCH_UNFMUL_S | MASK_UNCERTAINTY_AWARE_RM, MASK_UNFMUL_S | MASK_UNCERTAINTY_AWARE_RM, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfmul.s",   0, {"XUN", 0}, "D,S,T,m",  MATCH_UNFMUL_S, MASK_UNFMUL_S, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfdiv.s",   0, {"XUN", 0}, "D,S,T",  MATCH_UNFDIV_S | MASK_UNCERTAINTY_AWARE_RM, MASK_UNFDIV_S | MASK_UNCERTAINTY_AWARE_RM, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfdiv.s",   0, {"XUN", 0}, "D,S,T,m",  MATCH_UNFDIV_S, MASK_UNFDIV_S, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfsqrt.s",  0, {"XUN", 0}, "D,S",  MATCH_UNFSQRT_S | MASK_UNCERTAINTY_AWARE_RM, MASK_UNFSQRT_S | MASK_UNCERTAINTY_AWARE_RM, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfsqrt.s",  0, {"XUN", 0}, "D,S,m",  MATCH_UNFSQRT_S, MASK_UNFSQRT_S, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfmin.s",   0, {"XUN", 0}, "D,S,T",  MATCH_UNFMIN_S, MASK_UNFMIN_S, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unfmax.s",   0, {"XUN", 0}, "D,S,T",  MATCH_UNFMAX_S, MASK_UNFMAX_S, match_opcode, INSN_UNCERTAINTY_AWARE },
++{"unflw",      0, {"XUN", 0}, "D,o(s),f(b)",  MATCH_UNFLW, MASK_UNFLW, match_opcode, INSN_DREF|INSN_4_BYTE | INSN_UNCERTAINTY_AWARE },
++{"unfsw",      0, {"XUN", 0}, "T,q(s),f(b)",  MATCH_UNFSW, MASK_UNFSW, match_opcode, INSN_DREF|INSN_4_BYTE | INSN_UNCERTAINTY_AWARE },
++{"unupg.s",    0, {"XUN", 0}, "D,S,T",  MATCH_UNUPG_S | MASK_RM, MASK_UNUPG_S | MASK_RM, match_opcode, 0 },
++{"unupg.s",    0, {"XUN", 0}, "D,S,T,m",  MATCH_UNUPG_S, MASK_UNUPG_S, match_opcode, 0 },
++{"ungcov.s",   0, {"XUN", 0}, "D,S,T",  MATCH_UNGCOV_S | MASK_RM, MASK_UNGCOV_S | MASK_RM, match_opcode, 0 },
++{"ungcov.s",   0, {"XUN", 0}, "D,S,T,m",  MATCH_UNGCOV_S, MASK_UNGCOV_S, match_opcode, 0 },
++{"unsvar.s",   0, {"XUN", 0}, "D,S",  MATCH_UNSVAR_S | MASK_RM, MASK_UNSVAR_S | MASK_RM, match_opcode, 0 },
++{"unsvar.s",   0, {"XUN", 0}, "D,S,m",  MATCH_UNSVAR_S, MASK_UNSVAR_S, match_opcode, 0 },
++{"uncvar.s",   0, {"XUN", 0}, "D",  MATCH_UNCVAR_S, MASK_UNCVAR_S, match_opcode, 0 },
++
+ /* Compressed instructions.  */
+ {"c.unimp",    0, {"C", 0},   "",  0, 0xffffU,  match_opcode, 0 },
+ {"c.ebreak",   0, {"C", 0},   "",  MATCH_C_EBREAK, MASK_C_EBREAK, match_opcode, 0 },

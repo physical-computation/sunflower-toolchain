@@ -2,7 +2,7 @@ include ../conf/setup.conf
 
 GCCVER		= 8.2.0
 GCC		= $(TOOLS)/source/gcc-$(GCCVER)
-BINUTILS	= $(TOOLS)/source/binutils-2.29.1
+BINUTILS	= $(TOOLS)/source/binutils-2_32
 NEWLIB		= $(TOOLS)/source/newlib-2.5.0.20170922
 PRINTF		= $(TOOLS)/source/printf-3.1.4
 PUTCHAR		= $(TOOLS)/source/putchar
