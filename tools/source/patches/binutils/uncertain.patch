@@ -1,22 +1,8 @@
 diff --git a/gas/config/tc-riscv.c b/gas/config/tc-riscv.c
-index 99316156..d236bf04 100644
+index 99316156..8ccbe913 100644
 --- a/gas/config/tc-riscv.c
 +++ b/gas/config/tc-riscv.c
-@@ -241,6 +241,13 @@ create_insn (struct riscv_cl_insn *insn, const struct riscv_opcode *mo)
-   insn->frag = NULL;
-   insn->where = 0;
-   insn->fixp = NULL;
-+
-+
-+  if ((mo->pinfo & INSN_UNCERTAINTY_AWARE) && (mo->pinfo != INSN_MACRO))
-+  {
-+    insn->insn_opcode = (mo->match << 32) | (mo->match >> 32);
-+  }
-+
- }
- 
- /* Install INSN at the location specified by its "frag" and "where" fields.  */
-@@ -358,7 +365,7 @@ static const struct opcode_name_t opcode_name_list[] =
+@@ -358,7 +358,7 @@ static const struct opcode_name_t opcode_name_list[] =
    {"OP",        0x33},
    {"LUI",       0x37},
    {"OP_32",     0x3b},
@@ -25,20 +11,17 @@ index 99316156..d236bf04 100644
  
    {"MADD",      0x43},
    {"MSUB",      0x47},
-@@ -563,6 +570,12 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
+@@ -563,6 +563,9 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
        return FALSE;
      }
  
 +  if (opc->pinfo & INSN_UNCERTAINTY_AWARE)
-+    {
-+      used_bits = (used_bits << 32) | (used_bits >> 32);
-+    }
-+
++    used_bits = (used_bits << 32) | (used_bits >> 32);
 +
  #define USE_BITS(mask,shift)	(used_bits |= ((insn_t)(mask) << (shift)))
    while (*p)
      switch (c = *p++)
-@@ -637,6 +650,7 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
+@@ -637,6 +640,7 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
        case 's':	USE_BITS (OP_MASK_RS1,		OP_SH_RS1);	break;
        case 't':	USE_BITS (OP_MASK_RS2,		OP_SH_RS2);	break;
        case 'r':	USE_BITS (OP_MASK_RS3,          OP_SH_RS3);     break;
@@ -46,7 +29,7 @@ index 99316156..d236bf04 100644
        case 'P':	USE_BITS (OP_MASK_PRED,		OP_SH_PRED); break;
        case 'Q':	USE_BITS (OP_MASK_SUCC,		OP_SH_SUCC); break;
        case 'o':
-@@ -645,6 +659,7 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
+@@ -645,6 +649,7 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
        case 'p':	used_bits |= ENCODE_SBTYPE_IMM (-1U); break;
        case 'q':	used_bits |= ENCODE_STYPE_IMM (-1U); break;
        case 'u':	used_bits |= ENCODE_UTYPE_IMM (-1U); break;
@@ -54,7 +37,7 @@ index 99316156..d236bf04 100644
        case 'z': break;
        case '[': break;
        case ']': break;
-@@ -682,6 +697,14 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
+@@ -682,6 +687,12 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
  	return FALSE;
        }
  #undef USE_BITS
@@ -62,28 +45,36 @@ index 99316156..d236bf04 100644
 +  /* Swap high and low words back to their proper places
 +     for better error messages  */
 +  if (opc->pinfo & INSN_UNCERTAINTY_AWARE)
-+    {
-+      used_bits = (used_bits << 32) | (used_bits >> 32);
-+    }
++    used_bits = (used_bits << 32) | (used_bits >> 32);
 +
    if (used_bits != required_bits)
      {
        as_bad (_("internal: bad RISC-V opcode (bits 0x%lx undefined): %s %s"),
-@@ -1416,7 +1439,12 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
+@@ -1408,6 +1419,12 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
+       *imm_reloc = BFD_RELOC_UNUSED;
+       p = percent_op_itype;
+ 
++      /* Swap lower and upper 32 bits in uncertainty aware instructions before  */
++      /* parsing. We use normal parsing rules for the floating point  */
++      /* part of the instruction and then swap back once we are done.  */
++      if ((insn->pinfo & INSN_UNCERTAINTY_AWARE) && (insn->pinfo != INSN_MACRO))
++  ip->insn_opcode = (insn->match << 32) | (insn->match >> 32);
++
+       for (args = insn->args;; ++args)
+ 	{
+ 	  s += strspn (s, " \t");
+@@ -1416,6 +1433,10 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
  	    case '\0': 	/* End of args.  */
  	      if (insn->pinfo != INSN_MACRO)
  		{
--		  if (!insn->match_func (insn, ip->insn_opcode))
-+		  insn_t word = ip->insn_opcode;
-+		  if ((insn->pinfo & INSN_UNCERTAINTY_AWARE) && insn->pinfo != INSN_MACRO)
-+		  {
-+		    word = (word << 32) | (word >> 32);
-+		  }
-+		  if (!insn->match_func (insn, word))
++      /* Swap uncertainty aware instruction back into the correct form. */
++      if ((insn->pinfo & INSN_UNCERTAINTY_AWARE) && (insn->pinfo != INSN_MACRO))
++          ip->insn_opcode = (ip->insn_opcode << 32) | (ip->insn_opcode >> 32);
++
+ 		  if (!insn->match_func (insn, ip->insn_opcode))
  		    break;
  
- 		  /* For .insn, insn->match and insn->mask are 0.  */
-@@ -1809,6 +1837,7 @@ rvc_lui:
+@@ -1809,6 +1830,7 @@ rvc_lui:
  	    case 's':		/* Source register.  */
  	    case 't':		/* Target register.  */
  	    case 'r':		/* rs3.  */
@@ -91,7 +82,7 @@ index 99316156..d236bf04 100644
  	      if (reg_lookup (&s, RCLASS_GPR, &regno))
  		{
  		  c = *args;
-@@ -1831,6 +1860,9 @@ rvc_lui:
+@@ -1831,6 +1853,9 @@ rvc_lui:
  		    case 'r':
  		      INSERT_OPERAND (RS3, *ip, regno);
  		      break;
@@ -101,7 +92,7 @@ index 99316156..d236bf04 100644
  		    }
  		  continue;
  		}
-@@ -1911,6 +1943,10 @@ rvc_lui:
+@@ -1911,6 +1936,10 @@ rvc_lui:
  	      p = percent_op_itype;
  	      *imm_reloc = BFD_RELOC_RISCV_LO12_I;
  	      goto load_store;
@@ -112,18 +103,6 @@ index 99316156..d236bf04 100644
  	    case '1': /* 4-operand add, must be %tprel_add.  */
  	      p = percent_op_rtype;
  	      goto alu_op;
-@@ -2117,6 +2153,11 @@ md_assemble (char *str)
-       return;
-     }
- 
-+  if ((insn.insn_mo->pinfo & INSN_UNCERTAINTY_AWARE) && (insn.insn_mo->pinfo != INSN_MACRO))
-+    {
-+      insn.insn_opcode = (insn.insn_opcode << 32) | (insn.insn_opcode >> 32);
-+    }
-+
-   if (insn.insn_mo->pinfo == INSN_MACRO)
-     macro (&insn, &imm_expr, &imm_reloc);
-   else
 diff --git a/include/opcode/riscv-opc.h b/include/opcode/riscv-opc.h
 index f09200c0..424fb25d 100644
 --- a/include/opcode/riscv-opc.h
@@ -211,20 +190,17 @@ index 4acc25ce..98ffb6a3 100644
     disassembler, and requires special treatment by the assembler.  */
  #define INSN_MACRO		0xffffffff
 diff --git a/opcodes/riscv-dis.c b/opcodes/riscv-dis.c
-index 764c4d4d..5d2768ae 100644
+index 764c4d4d..f042dc77 100644
 --- a/opcodes/riscv-dis.c
 +++ b/opcodes/riscv-dis.c
-@@ -433,6 +433,14 @@ riscv_disassemble_insn (bfd_vma memaddr, insn_t word, disassemble_info *info)
+@@ -433,6 +433,11 @@ riscv_disassemble_insn (bfd_vma memaddr, insn_t word, disassemble_info *info)
  	  if ((op->xlen_requirement != 0) && (op->xlen_requirement != xlen))
  	    continue;
  
 +		/* Is this a 64 bit uncertainty aware instruction? If so swap the
-+		   upper and lower 32 bits of the word  */
-+
++		   upper and lower 32 bits of the word before disassembling. */
 +		if (op->pinfo & INSN_UNCERTAINTY_AWARE)
-+			{
-+				word = (word >> 32) | (word << 32);
-+			}
++			word = (word >> 32) | (word << 32);
 +
  	  /* It's a match.  */
  	  (*info->fprintf_func) (info->stream, "%s", op->name);
