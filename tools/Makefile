@@ -9,7 +9,7 @@ PUTCHAR		= $(TOOLS)/source/putchar
 
 
 
-all: binutils gcc g++ newlib printf
+all: binutils gcc newlib printf
 
 
 binutils: binutils-pre binutils-post
