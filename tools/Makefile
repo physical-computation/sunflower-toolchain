@@ -102,20 +102,6 @@ newlib-post:
 	$(DEL) $(NEWLIB)/objdir;\
 
 
-printf: printf-pre printf-post
-
-printf-pre:
-	$(DEL) objdir; mkdir -p objdir; cd objdir;\
-	$(CC) -Wall -Werror -g -c $(PRINTF)/printf.c;\
-	$(CC) -Wall -Werror -g -c $(PUTCHAR)/putchar.c;\
-	$(AR) cr libprintf.a printf.o putchar.o;
-
-printf-post:
-	cp $(PRINTF)/*.h $(SUNFLOWERROOT)/tools/$(TARGET)/include/
-	cp objdir/lib*.a $(SUNFLOWERROOT)/tools/tools-lib/$(TARGET)/
-	$(DEL) objdir;
-
-
 
 #
 #	This is from @harrysarson:
