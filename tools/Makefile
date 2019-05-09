@@ -4,9 +4,12 @@ GCCVER		= 8.2.0
 GCC		= $(TOOLS)/source/gcc-$(GCCVER)
 BINUTILS	= $(TOOLS)/source/binutils-2.29.1
 NEWLIB		= $(TOOLS)/source/newlib-2.5.0.20170922
+PRINTF		= $(TOOLS)/source/printf-3.1.4
+PUTCHAR		= $(TOOLS)/source/putchar
 
 
-all: binutils gcc g++ newlib
+
+all: binutils gcc g++ newlib printf
 
 
 binutils: binutils-pre binutils-post
@@ -97,6 +100,24 @@ newlib-pre:
 newlib-post:
 	cp $(PREFIX)/$(TARGET-ARCH)/lib/*.a $(SUNFLOWERROOT)/tools/tools-lib/$(TARGET)/;\
 	$(DEL) $(NEWLIB)/objdir;\
+
+
+
+#
+#	This is from @harrysarson:
+#
+printf: printf-pre printf-post
+
+printf-pre:
+	$(DEL) objdir; mkdir -p objdir; cd objdir;\
+	$(CC) -Wall -Werror -g -c $(PRINTF)/printf.c;\
+	$(CC) -Wall -Werror -g -c $(PUTCHAR)/putchar.c;\
+	$(AR) cr libprintf.a printf.o putchar.o;
+
+printf-post:
+	cp $(PRINTF)/*.h $(SUNFLOWERROOT)/tools/$(TARGET)/include/
+	cp objdir/lib*.a $(SUNFLOWERROOT)/tools/tools-lib/$(TARGET)/
+	$(DEL) objdir;
 
 
 
