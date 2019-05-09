@@ -21,11 +21,11 @@ binutils-pre:
 	$(DEL) objdir; mkdir -p objdir; cd objdir;\
 	export MAKEINFO=missing && ../configure --disable-docs --target=$(TARGET-ARCH)\
 		--prefix=$(PREFIX) --disable-libssp --disable-nls -v;\
-	$(MAKE) -r CC=$(TOOLCC) CFLAGS="-D_FORTIFY_SOURCE=1" LD=$(TOOLCC) all install;\
+	# $(MAKE) -r CC=$(TOOLCC) CFLAGS="-D_FORTIFY_SOURCE=1" LD=$(TOOLCC) all install;\
 
 binutils-post:
-	mv $(PREFIX)/bin/$(TARGET-ARCH)* $(TOOLS)/bin/;\
-	$(DEL) $(BINUTILS)/objdir;\
+	cp $(PREFIX)/bin/$(TARGET-ARCH)* $(TOOLS)/bin/;\
+	# $(DEL) $(BINUTILS)/objdir;\
 
 
 #
