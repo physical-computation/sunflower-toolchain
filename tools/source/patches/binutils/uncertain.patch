@@ -8,34 +8,8 @@ index 4460159c..b36eec62 100644
  /isl*
 +
 +/objdir/
-diff --git a/bfd/bfd-in2.h b/bfd/bfd-in2.h
-index e25da50a..909afc9d 100644
---- a/bfd/bfd-in2.h
-+++ b/bfd/bfd-in2.h
-@@ -4799,6 +4799,8 @@ number for the SBIC, SBIS, SBI and CBI instructions  */
-   BFD_RELOC_RISCV_PCREL_LO12_S,
-   BFD_RELOC_RISCV_LO12_I,
-   BFD_RELOC_RISCV_LO12_S,
-+  BFD_RELOC_RISCV_LO12_UNCERTAIN_AWARE_I,
-+  BFD_RELOC_RISCV_LO12_UNCERTAIN_AWARE_S,
-   BFD_RELOC_RISCV_GPREL12_I,
-   BFD_RELOC_RISCV_GPREL12_S,
-   BFD_RELOC_RISCV_TPREL_HI20,
-diff --git a/bfd/elfxx-riscv.c b/bfd/elfxx-riscv.c
-index 29592db9..215516df 100644
---- a/bfd/elfxx-riscv.c
-+++ b/bfd/elfxx-riscv.c
-@@ -883,6 +883,8 @@ static const struct elf_reloc_map riscv_reloc_map[] =
-   { BFD_RELOC_RISCV_HI20, R_RISCV_HI20 },
-   { BFD_RELOC_RISCV_LO12_I, R_RISCV_LO12_I },
-   { BFD_RELOC_RISCV_LO12_S, R_RISCV_LO12_S },
-+  { BFD_RELOC_RISCV_LO12_UNCERTAIN_AWARE_S, R_RISCV_LO12_S },
-+  { BFD_RELOC_RISCV_LO12_UNCERTAIN_AWARE_I, R_RISCV_LO12_I },
-   { BFD_RELOC_RISCV_PCREL_LO12_I, R_RISCV_PCREL_LO12_I },
-   { BFD_RELOC_RISCV_PCREL_LO12_S, R_RISCV_PCREL_LO12_S },
-   { BFD_RELOC_RISCV_CALL, R_RISCV_CALL },
 diff --git a/gas/config/tc-riscv.c b/gas/config/tc-riscv.c
-index 99316156..e9d322ae 100644
+index 99316156..ed8d3d1c 100644
 --- a/gas/config/tc-riscv.c
 +++ b/gas/config/tc-riscv.c
 @@ -358,7 +358,7 @@ static const struct opcode_name_t opcode_name_list[] =
@@ -86,29 +60,16 @@ index 99316156..e9d322ae 100644
    if (used_bits != required_bits)
      {
        as_bad (_("internal: bad RISC-V opcode (bits 0x%lx undefined): %s %s"),
-@@ -794,6 +805,12 @@ riscv_apply_const_reloc (bfd_reloc_code_real_type reloc_type, bfd_vma value)
-     case BFD_RELOC_RISCV_LO12_I:
-       return ENCODE_ITYPE_IMM (value);
- 
-+    case BFD_RELOC_RISCV_LO12_UNCERTAIN_AWARE_S:
-+      return ((insn_t)ENCODE_STYPE_IMM (value) << 32) | ENCODE_ITYPE_IMM (value);
-+
-+    case BFD_RELOC_RISCV_LO12_UNCERTAIN_AWARE_I:
-+      return ((insn_t)ENCODE_ITYPE_IMM (value) << 32) | ENCODE_ITYPE_IMM (value);
-+
-     default:
-       abort ();
-     }
-@@ -1379,6 +1396,8 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
+@@ -1379,6 +1390,8 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
    int argnum;
    const struct percent_op_match *p;
    const char *error = "unrecognized opcode";
 +  int is_uncertain_aware;
-+  offsetT old_loadstore_displacement;
++  offsetT old_loadstore_displacement = ~0;
  
    /* Parse the name of the instruction.  Terminate the string if whitespace
       is found so that hash_find only sees the name part of the string.  */
-@@ -1403,11 +1422,18 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
+@@ -1403,11 +1416,18 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
  
        create_insn (ip, insn);
        argnum = 1;
@@ -127,7 +88,7 @@ index 99316156..e9d322ae 100644
        for (args = insn->args;; ++args)
  	{
  	  s += strspn (s, " \t");
-@@ -1416,6 +1442,10 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
+@@ -1416,6 +1436,10 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
  	    case '\0': 	/* End of args.  */
  	      if (insn->pinfo != INSN_MACRO)
  		{
@@ -138,7 +99,7 @@ index 99316156..e9d322ae 100644
  		  if (!insn->match_func (insn, ip->insn_opcode))
  		    break;
  
-@@ -1809,6 +1839,7 @@ rvc_lui:
+@@ -1809,6 +1833,7 @@ rvc_lui:
  	    case 's':		/* Source register.  */
  	    case 't':		/* Target register.  */
  	    case 'r':		/* rs3.  */
@@ -146,7 +107,7 @@ index 99316156..e9d322ae 100644
  	      if (reg_lookup (&s, RCLASS_GPR, &regno))
  		{
  		  c = *args;
-@@ -1831,6 +1862,11 @@ rvc_lui:
+@@ -1831,6 +1856,13 @@ rvc_lui:
  		    case 'r':
  		      INSERT_OPERAND (RS3, *ip, regno);
  		      break;
@@ -154,34 +115,28 @@ index 99316156..e9d322ae 100644
 +          if (regno != ((ip->insn_opcode >> OP_SH_RS1) & OP_MASK_RS1))
 +            as_fatal(_("We do not currently support storing best guess and uncertainty in different locations. Sorry!"));
 +		      INSERT_OPERAND (UNCERTAINTY_MEMORY_SOURCE, *ip, regno);
++          // zero out the non uncertain memory location (as we ignore it for now)
++		      INSERT_OPERAND (RS1, *ip, 0);
 +		      break;
  		    }
  		  continue;
  		}
-@@ -1903,6 +1939,22 @@ rvc_lui:
+@@ -1903,6 +1935,14 @@ rvc_lui:
  	      p = percent_op_itype;
  	      *imm_reloc = BFD_RELOC_RISCV_LO12_I;
  	      goto alu_op;
 +	    case 'f':
 +        old_loadstore_displacement = imm_expr->X_add_number;
 +        /* leave value of p unchanged */
-+        if (*imm_reloc == BFD_RELOC_RISCV_LO12_S)
-+    {
-+      *imm_reloc = BFD_RELOC_RISCV_LO12_UNCERTAIN_AWARE_S;
-+    }
-+        else if (*imm_reloc == BFD_RELOC_RISCV_LO12_I)
-+    {
-+      *imm_reloc = BFD_RELOC_RISCV_LO12_UNCERTAIN_AWARE_I;
-+    }
-+        else
-+    {
-+      as_fatal(_("internal error: uncertainty displacement must come after load/store displacement."));
-+    }
-+	      goto load_store;
++        if (*imm_reloc != BFD_RELOC_RISCV_LO12_S && *imm_reloc != BFD_RELOC_RISCV_LO12_I)
++    as_fatal(_("internal error: uncertainty displacement must come after load/store displacement."));
++	      p = percent_op_itype;
++	      *imm_reloc = BFD_RELOC_RISCV_LO12_I;
++        goto load_store;
  	    case 'q': /* Store displacement.  */
  	      p = percent_op_stype;
  	      *imm_reloc = BFD_RELOC_RISCV_LO12_S;
-@@ -1933,6 +1985,8 @@ alu_op:
+@@ -1933,6 +1973,8 @@ alu_op:
  		      || imm_expr->X_add_number < -(signed)RISCV_IMM_REACH/2)
  		    break;
  		}
@@ -190,27 +145,11 @@ index 99316156..e9d322ae 100644
  
  	      s = expr_end;
  	      continue;
-@@ -2335,6 +2389,15 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
-       relaxable = TRUE;
-       break;
- 
-+    case BFD_RELOC_RISCV_LO12_UNCERTAIN_AWARE_I:
-+    case BFD_RELOC_RISCV_LO12_UNCERTAIN_AWARE_S:
-+      bfd_putl64 (riscv_apply_const_reloc (fixP->fx_r_type, *valP)
-+		  | bfd_getl64 (buf), buf);
-+      if (fixP->fx_addsy == NULL)
-+	fixP->fx_done = TRUE;
-+      relaxable = TRUE;
-+      break;
-+
-     case BFD_RELOC_RISCV_GOT_HI20:
-     case BFD_RELOC_RISCV_ADD8:
-     case BFD_RELOC_RISCV_ADD16:
 diff --git a/include/opcode/riscv-opc.h b/include/opcode/riscv-opc.h
-index f09200c0..424fb25d 100644
+index f09200c0..9e3b4f29 100644
 --- a/include/opcode/riscv-opc.h
 +++ b/include/opcode/riscv-opc.h
-@@ -829,6 +829,46 @@
+@@ -829,6 +829,48 @@
  #define CAUSE_SUPERVISOR_ECALL 0x9
  #define CAUSE_HYPERVISOR_ECALL 0xa
  #define CAUSE_MACHINE_ECALL 0xb
@@ -245,14 +184,16 @@ index f09200c0..424fb25d 100644
 +#define MATCH_UNFSW         UNCERTAIN_MATCH(MATCH_FSW,         0x000070BF)
 +#define MASK_UNFSW          UNCERTAIN_MASK(MASK_FSW,           0x00007FFF)
 +
-+#define MATCH_UNUPG_S  0x38000053
-+#define MASK_UNUPG_S   0xfe00007f
-+#define MATCH_UNGCOV_S 0x78000053
-+#define MASK_UNGCOV_S  0xfe00007f
-+#define MATCH_UNSVAR_S 0xb8000053
-+#define MASK_UNSVAR_S  0xfff0007f
-+#define MATCH_UNCVAR_S 0xf8000053
-+#define MASK_UNCVAR_S  0xfffff07f
++#define MATCH_UNUPG_S   0x38000053
++#define MASK_UNUPG_S    0xfe00007f
++#define MATCH_UNGCOV_S  0x78000053
++#define MASK_UNGCOV_S   0xfe00007f
++#define MATCH_UNSVAR_S  0xb8000053
++#define MASK_UNSVAR_S   0xfff0007f
++#define MATCH_UNCPVAR_S 0xb8100053
++#define MASK_UNCPVAR_S  0xfff0707f
++#define MATCH_UNCLVAR_S 0xb8200053
++#define MASK_UNCLVAR_S  0xfffff07f
 +
  #endif
  #ifdef DECLARE_INSN
@@ -336,7 +277,7 @@ index 764c4d4d..91f02fe3 100644
  	  if (pd->print_addr != (bfd_vma)-1)
  	    {
 diff --git a/opcodes/riscv-opc.c b/opcodes/riscv-opc.c
-index 72e6b9d4..544d4ae1 100644
+index 72e6b9d4..313433ad 100644
 --- a/opcodes/riscv-opc.c
 +++ b/opcodes/riscv-opc.c
 @@ -74,6 +74,7 @@ const char * const riscv_fpr_names_abi[NFPR] = {
@@ -347,7 +288,7 @@ index 72e6b9d4..544d4ae1 100644
  #define MASK_PRED (OP_MASK_PRED << OP_SH_PRED)
  #define MASK_SUCC (OP_MASK_SUCC << OP_SH_SUCC)
  #define MASK_AQ (OP_MASK_AQ << OP_SH_AQ)
-@@ -695,6 +696,35 @@ const struct riscv_opcode riscv_opcodes[] =
+@@ -695,6 +696,36 @@ const struct riscv_opcode riscv_opcodes[] =
  {"fcvt.q.lu", 64, {"Q", 0}, "D,s",  MATCH_FCVT_Q_LU | MASK_RM, MASK_FCVT_Q_L | MASK_RM, match_opcode, 0 },
  {"fcvt.q.lu", 64, {"Q", 0}, "D,s,m",  MATCH_FCVT_Q_LU, MASK_FCVT_Q_LU, match_opcode, 0 },
  
@@ -378,7 +319,8 @@ index 72e6b9d4..544d4ae1 100644
 +{"ungcov.s",   0, {"XUN", 0}, "D,S,T,m",  MATCH_UNGCOV_S, MASK_UNGCOV_S, match_opcode, 0 },
 +{"unsvar.s",   0, {"XUN", 0}, "D,S",  MATCH_UNSVAR_S | MASK_RM, MASK_UNSVAR_S | MASK_RM, match_opcode, 0 },
 +{"unsvar.s",   0, {"XUN", 0}, "D,S,m",  MATCH_UNSVAR_S, MASK_UNSVAR_S, match_opcode, 0 },
-+{"uncvar.s",   0, {"XUN", 0}, "D",  MATCH_UNCVAR_S, MASK_UNCVAR_S, match_opcode, 0 },
++{"unclvar.s",  0, {"XUN", 0}, "D",  MATCH_UNCLVAR_S, MASK_UNCLVAR_S, match_opcode, 0 },
++{"uncpvar.s",  0, {"XUN", 0}, "D,S",  MATCH_UNCPVAR_S, MASK_UNCPVAR_S, match_opcode, 0 },
 +
  /* Compressed instructions.  */
  {"c.unimp",    0, {"C", 0},   "",  0, 0xffffU,  match_opcode, 0 },
