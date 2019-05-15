@@ -11,7 +11,7 @@ import sys
 # it is not provided then this script will read assembly from stdin instead.
 #
 # Any standard single precision floating point instructions will be replaced by
-# uncertainty aware instructions and the result written to stdout.
+# uncertainty aware instructions in place.
 #
 # Errors and warnings are written to stderr.
 #
@@ -35,7 +35,7 @@ def replace_mnemonic(line, mnemonic):
     )
 
 
-with fileinput.input() as file:
+with fileinput.input(inplace=True) as file:
     for line in file:
         lineno = file.lineno()
         line = replace_mnemonic(line, "fadd.s")
