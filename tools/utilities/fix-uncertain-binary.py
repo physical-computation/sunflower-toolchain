@@ -33,12 +33,20 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 def get_text_start_end(file):
-    elf_info = subprocess.Popen(['readelf', file_name, '-S'], stdout=subprocess.PIPE).stdout.read(-1)
+    elf_info = subprocess.Popen(['readelf', file_name, '-hS'], stdout=subprocess.PIPE).stdout.read(-1)
     text_offset_and_size = re.search(
         r"\.text\s*\w*\s*\w*\s*(\w*)\s*(\w*)",
         str(elf_info, 'utf-8')
         , re.MULTILINE
         ).group(1, 2)
+
+    machine_type = re.search(
+        r"^\s*Machine:\s*(.+)$",
+        str(elf_info, 'utf-8')
+        , re.MULTILINE
+    ).group(1)
+
+    assert machine_type == "RISC-V", "Expected a RISC-V elf file, found machine: {}".format(machine_type)
 
     text_offset_bytes = int(text_offset_and_size[0], 16)
     text_size_bytes = int(text_offset_and_size[1], 16)
@@ -60,6 +68,13 @@ with open(file_name, mode='rb') as file:
             sys.stdout.buffer.write(chunk)
         else:
             (int_value,) = struct.unpack('<I', chunk)
+
+            if int_value & 0x3 != 0x3 and int_value != 0:
+                eprint("Possible compressed instruction found (0x{:04X}) at {} bytes into the file\n".format(
+                        int_value & 0xFFFF,
+                        words_read * 4
+                        ) +
+                    "    We do not suppport compressed instructions.")
 
             if prev_instruction_if_uncertain != None:
                 dest_register_mask = 0x000F8000
