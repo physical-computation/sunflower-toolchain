@@ -6,10 +6,11 @@ BINUTILS	= $(TOOLS)/source/binutils-2_32
 NEWLIB		= $(TOOLS)/source/newlib-2.5.0.20170922
 PRINTF		= $(TOOLS)/source/printf-3.1.4
 PUTCHAR		= $(TOOLS)/source/putchar
+UNCERTAIN	= $(TOOLS)/source/uncertain
 
 
 
-all: binutils gcc g++ newlib printf
+all: binutils gcc g++ newlib printf uncertain
 
 
 binutils: binutils-pre binutils-post
@@ -119,7 +120,17 @@ printf-post:
 	cp objdir/lib*.a $(SUNFLOWERROOT)/tools/tools-lib/$(TARGET)/
 	$(DEL) objdir;
 
+uncertain: uncertain-pre uncertain-post
 
+uncertain-pre:
+	$(DEL) objdir; mkdir -p objdir; cd objdir;\
+	$(AS) --march=rv32ifdxun -g -c $(UNCERTAIN)/uncertain.S -o uncertain.o;\
+	$(AR) cr libuncertain.a uncertain.o;
+
+uncertain-post:
+	cp $(UNCERTAIN)/*.h $(SUNFLOWERROOT)/tools/$(TARGET)/include/
+	cp objdir/lib*.a $(SUNFLOWERROOT)/tools/tools-lib/$(TARGET)/
+	$(DEL) objdir;
 
 clean:
 	@echo '==> $(BINUTILS)'; $(DEL) $(BINUTILS)/objdir
