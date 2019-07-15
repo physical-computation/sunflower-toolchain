@@ -20,7 +20,7 @@ cross-superH:
 
 cross-riscv:
 	cd $(TOOLS); $(MAKE) PATH=$(Z)\
-	TARGET=riscv TARGET-ARCH=riscv32-elf ADDITIONAL_ARCH_FLAGS="--with-arch=rv32ifd" all;\
+	TARGET=riscv TARGET-ARCH=riscv32-elf all;\
 
 cross-all:
 	cd $(TOOLS); $(MAKE) PATH=$(Z)\
