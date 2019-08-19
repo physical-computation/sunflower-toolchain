@@ -26,7 +26,7 @@ binutils-pre:
 
 binutils-post:
 	cp $(PREFIX)/bin/$(TARGET-ARCH)* $(TOOLS)/bin/;\
-	# $(DEL) $(BINUTILS)/objdir;\
+	$(DEL) $(BINUTILS)/objdir;\
 
 
 #
