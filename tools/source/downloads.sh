@@ -19,7 +19,7 @@ wget	https://github.com/mpaland/printf/archive/$PRINTF_TAR
 # tar -xzvf $NEWLIB_TAR
 tar -xzvf $PRINTF_TAR
 
-# git clone --depth=1 --branch=$BINU    TILS_VER git://sourceware.org/git/binutils-gdb.git $BINUTILS_VER
+# git clone --depth=1 --branch=$BINUTILS_VER git://sourceware.org/git/binutils-gdb.git $BINUTILS_VER
 # cd $BINUTILS_VER
 # git apply ../patches/binutils/uncertain.patch
 # cd -

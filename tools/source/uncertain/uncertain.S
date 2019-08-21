@@ -71,7 +71,7 @@ atan2unf:
 	/* Calculate z = y / x and store in fa4 */
 	unfdiv.s	fa4, fs0, fs1
 
-	/* Calculate d(atan(z))/dz = 1 / 1 / (z^2 + 1) and store in fa2. */
+	/* Calculate d(atan(z))/dz = 1 / (z^2 + 1) and store in fa2. */
 	li		a0, 1
 	fcvt.s.w	fa3, a0
 	fmul.s		fa2, fs0, fs0
@@ -111,6 +111,7 @@ asinunf:
 	fmul.s    fa4, fs0, fs0
 	fsub.s    fa4, fa3, fa4
 	fsqrt.s   fa4, fa4
+	fdiv.s    fa4, fa3, fa4
 
 	/* Set the uncertainty information of fa0 by applying the linear
 	 * uncertainty propagation equations to asin(x).
