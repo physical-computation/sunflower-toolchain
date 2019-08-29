@@ -16,4 +16,7 @@ tools/riscv
 #
 #	Downloaded sources
 #
-tools/source/*
+tools/source/binutils*
+tools/source/gcc*
+tools/source/newlib*
+tools/source/printf*

@@ -10,8 +10,7 @@ UNCERTAIN	= $(TOOLS)/source/uncertain
 
 
 
-all: binutils gcc g++ newlib printf uncertain
-
+all: binutils gcc newlib printf uncertain
 
 binutils: binutils-pre binutils-post
 
