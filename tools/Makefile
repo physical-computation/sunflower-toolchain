@@ -1,16 +1,20 @@
 include ../conf/setup.conf
 
-GCCVER		= 8.2.0
-GCC		= $(TOOLS)/source/gcc-$(GCCVER)
-BINUTILS	= $(TOOLS)/source/binutils-2_32
-NEWLIB		= $(TOOLS)/source/newlib-2.5.0.20170922
-PRINTF		= $(TOOLS)/source/printf-4.0.0
-PUTCHAR		= $(TOOLS)/source/putchar
-UNCERTAIN	= $(TOOLS)/source/uncertain
+GCCVER			= 8.2.0
+GCC			= $(TOOLS)/source/gcc-$(GCCVER)
+BINUTILS		= $(TOOLS)/source/binutils-2.29.1
+UNCERTAIN_BINUTILS	= $(TOOLS)/source/uncertain-binutils-2_32
+NEWLIB			= $(TOOLS)/source/newlib-2.5.0.20170922
+PRINTF			= $(TOOLS)/source/printf-4.0.0
+PUTCHAR			= $(TOOLS)/source/putchar
+UNCERTAIN		= $(TOOLS)/source/uncertain
+
+PREFIX_UNCERTAIN	= $(PREFIX)-uncertain
 
 
+all: binutils gcc newlib printf
 
-all: binutils gcc newlib printf uncertain
+uncertain: uncertain-binutils gcc newlib printf libuncertain
 
 binutils: binutils-pre binutils-post
 
@@ -21,11 +25,31 @@ binutils-pre:
 	$(DEL) objdir; mkdir -p objdir; cd objdir;\
 	export MAKEINFO=missing && ../configure --disable-docs --target=$(TARGET-ARCH)\
 		--prefix=$(PREFIX) --disable-libssp --disable-nls -v;\
-	# $(MAKE) -r CC=$(TOOLCC) CFLAGS="-D_FORTIFY_SOURCE=1" LD=$(TOOLCC) all install;\
+	$(MAKE) -r CC=$(TOOLCC) CFLAGS="-D_FORTIFY_SOURCE=1" LD=$(TOOLCC) all install;\
 
 binutils-post:
 	cp $(PREFIX)/bin/$(TARGET-ARCH)* $(TOOLS)/bin/;\
 	$(DEL) $(BINUTILS)/objdir;\
+
+
+uncertain-binutils: uncertain-binutils-pre uncertain-binutils-post
+
+uncertain-binutils-pre:
+	if test -d $(TOOLS)/bin; then true; else mkdir $(TOOLS)/bin; fi
+	if test -d $(TOOLS)/$(TARGET); then true; else mkdir $(TOOLS)/$(TARGET); fi
+	cd $(UNCERTAIN_BINUTILS) \
+	&& $(DEL) objdir \
+	&& mkdir -p objdir \
+	&& cd objdir \
+	&& ../configure --disable-docs --target=$(TARGET-ARCH)\
+		--prefix=$(PREFIX_UNCERTAIN) --disable-libssp --disable-nls \
+	&& $(MAKE) CC=$(TOOLCC) CFLAGS="-D_FORTIFY_SOURCE=1" LD=$(TOOLCC) MAKEINFO=true all install
+
+uncertain-binutils-post:
+	cd $(PREFIX_UNCERTAIN)/bin/ \
+	&& for f in $(TARGET-ARCH)*; do cp "$$f" "uncertain-$$f"; done
+	cp $(PREFIX_UNCERTAIN)/bin/uncertain-$(TARGET-ARCH)* $(TOOLS)/bin/
+	$(DEL) $(BINUTILS)/objdir
 
 
 #
@@ -119,14 +143,14 @@ printf-post:
 	cp objdir/lib*.a $(SUNFLOWERROOT)/tools/tools-lib/$(TARGET)/
 	$(DEL) objdir;
 
-uncertain: uncertain-pre uncertain-post
+libuncertain: libuncertain-pre libuncertain-post
 
-uncertain-pre:
+libuncertain-pre:
 	$(DEL) objdir; mkdir -p objdir; cd objdir;\
 	$(AS) --march=rv32ifdxun -g -c $(UNCERTAIN)/uncertain.S -o uncertain.o;\
 	$(AR) cr libuncertain.a uncertain.o;
 
-uncertain-post:
+libuncertain-post:
 	cp $(UNCERTAIN)/*.h $(SUNFLOWERROOT)/tools/$(TARGET)/include/
 	cp objdir/lib*.a $(SUNFLOWERROOT)/tools/tools-lib/$(TARGET)/
 	$(DEL) objdir;
