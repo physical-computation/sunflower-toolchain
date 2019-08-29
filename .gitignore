@@ -12,6 +12,7 @@ conf/setup.conf
 tools/bin
 tools/superH
 tools/riscv
+tools/riscv-uncertain
 
 #
 #	Downloaded sources

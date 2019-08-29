@@ -14,7 +14,7 @@ PREFIX_UNCERTAIN	= $(PREFIX)-uncertain
 
 all: binutils gcc newlib printf
 
-uncertain: uncertain-binutils gcc newlib printf libuncertain
+uncertain: binutils uncertain-binutils gcc newlib printf libuncertain
 
 binutils: binutils-pre binutils-post
 
@@ -25,7 +25,7 @@ binutils-pre:
 	$(DEL) objdir; mkdir -p objdir; cd objdir;\
 	export MAKEINFO=missing && ../configure --disable-docs --target=$(TARGET-ARCH)\
 		--prefix=$(PREFIX) --disable-libssp --disable-nls -v;\
-	$(MAKE) -r CC=$(TOOLCC) CFLAGS="-D_FORTIFY_SOURCE=1" LD=$(TOOLCC) all install;\
+	$(MAKE) CC=$(TOOLCC) CFLAGS="-D_FORTIFY_SOURCE=1" LD=$(TOOLCC) all install;\
 
 binutils-post:
 	cp $(PREFIX)/bin/$(TARGET-ARCH)* $(TOOLS)/bin/;\
@@ -147,7 +147,7 @@ libuncertain: libuncertain-pre libuncertain-post
 
 libuncertain-pre:
 	$(DEL) objdir; mkdir -p objdir; cd objdir;\
-	$(AS) --march=rv32ifdxun -g -c $(UNCERTAIN)/uncertain.S -o uncertain.o;\
+	$(UNCERTAIN_AS) --march=rv32ifdxun -g -c $(UNCERTAIN)/uncertain.S -o uncertain.o;\
 	$(AR) cr libuncertain.a uncertain.o;
 
 libuncertain-post:
@@ -157,11 +157,13 @@ libuncertain-post:
 
 clean:
 	@echo '==> $(BINUTILS)'; $(DEL) $(BINUTILS)/objdir
+	@echo '==> $(UNCERTAIN_BINUTILS)'; $(DEL) $(UNCERTAIN_BINUTILS)/objdir
 	@echo '==> $(GCC)'; $(DEL) $(GCC)/objdir
 	@echo '==> $(NEWLIB)'; $(DEL) $(NEWLIB)/objdir
 
 nuke:
 	@echo '==> $(BINUTILS)'; $(DEL) $(BINUTILS)/objdir
+	@echo '==> $(UNCERTAIN_BINUTILS)'; $(DEL) $(UNCERTAIN_BINUTILS)/objdir
 	@echo '==> $(GCC)'; $(DEL) $(GCC)/objdir
 	@echo '==> $(NEWLIB)'; $(DEL) $(NEWLIB)/objdir
 	@echo '==> $(TOOLS)'; $(DEL) $(TOOLS)/bin
