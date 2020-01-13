@@ -22,6 +22,10 @@ cross-riscv:
 	cd $(TOOLS); $(MAKE) PATH=$(Z)\
 	TARGET=riscv TARGET-ARCH=riscv32-elf ADDITIONAL_ARCH_FLAGS="--with-arch=rv32ifd" all;\
 
+cross-uncertain-riscv:
+	cd $(TOOLS); $(MAKE) PATH=$(Z)\
+	TARGET=riscv TARGET-ARCH=riscv32-elf ADDITIONAL_ARCH_FLAGS="--with-arch=rv32ifd" uncertain;\
+
 # cross-msp430:
 #	cd $(TOOLS); $(MAKE) PATH=$(Z)\
 #	TARGET=msp430 TARGET-ARCH=msp430 all;\
