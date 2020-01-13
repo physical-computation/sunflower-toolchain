@@ -33,8 +33,8 @@ import os
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def get_text_start_end(file):
-    elf_info = subprocess.Popen(['readelf', file_name, '-hS'], stdout=subprocess.PIPE).stdout.read(-1)
+def get_text_start_end(file, readelf_path):
+    elf_info = subprocess.Popen([readelf_path, file_name, '-hS'], stdout=subprocess.PIPE).stdout.read(-1)
     text_offset_and_size = re.search(
         r"\.text\s*\w*\s*\w*\s*(\w*)\s*(\w*)",
         str(elf_info, 'utf-8')
@@ -59,12 +59,13 @@ def get_text_start_end(file):
 
 
 file_name = sys.argv[1]
+readelf_path = sys.argv[2]
 
 with open(file_name, mode='rb+') as file:
     try:
         prev_instruction_if_uncertain = None
         words_read = 0
-        (text_start, text_end) = get_text_start_end(file_name)
+        (text_start, text_end) = get_text_start_end(file_name, readelf_path)
         for chunk in iter((lambda:file.read(4)),b''):
             newChunk = chunk
             if words_read >= text_start and words_read < text_end:
