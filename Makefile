@@ -33,7 +33,7 @@ cross-uncertain-riscv:
 #	cd $(TOOLS); $(MAKE) PATH=$(Z) \
 #	TARGET=msp430 TARGET-ARCH=msp430 all;\
 
-cross-all: cross-arm cross-superH cross-riscv
+cross-all: cross-superH cross-riscv
 
 clean:
 	cd $(TOOLS); $(MAKE) nuke; \
