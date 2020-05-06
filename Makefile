@@ -27,7 +27,7 @@ cross-riscv:
 
 cross-uncertain-riscv:
 	cd $(TOOLS); $(MAKE) PATH=$(Z) \
-	TARGET=riscv TARGET-ARCH=riscv32-elf ADDITIONAL_ARCH_FLAGS="--with-arch=rv32ifd" uncertain;\
+	TARGET=riscv TARGET-ARCH=riscv32-elf ADDITIONAL_ARCH_FLAGS="--with-arch=rv32ifd --enable-multilib" uncertain;\
 
 # cross-msp430:
 #	cd $(TOOLS); $(MAKE) PATH=$(Z) \
