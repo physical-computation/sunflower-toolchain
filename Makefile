@@ -23,11 +23,11 @@ cross-superH:
 
 cross-riscv:
 	cd $(TOOLS); $(MAKE) PATH=$(Z) \
-	TARGET=riscv TARGET-ARCH=riscv32-elf ADDITIONAL_ARCH_FLAGS="--with-arch=rv32imfd --enable-multilib" all;\
+	TARGET=riscv TARGET-ARCH=riscv32-elf ADDITIONAL_ARCH_FLAGS="--with-arch=rv32imfd" all;\
 
 cross-uncertain-riscv:
 	cd $(TOOLS); $(MAKE) PATH=$(Z) \
-	TARGET=riscv TARGET-ARCH=riscv32-elf ADDITIONAL_ARCH_FLAGS="--with-arch=rv32ifd --enable-multilib" uncertain;\
+	TARGET=riscv TARGET-ARCH=riscv32-elf ADDITIONAL_ARCH_FLAGS="--with-arch=rv32ifd" uncertain;\
 
 # cross-msp430:
 #	cd $(TOOLS); $(MAKE) PATH=$(Z) \
