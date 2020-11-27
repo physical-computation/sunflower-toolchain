@@ -1,6 +1,6 @@
 include conf/setup.conf
 
-Z		= $(PATH):$(SUNFLOWERROOT)/tools/bin
+Z		= "$(PATH):$(SUNFLOWERROOT)/tools/bin"
 
 #
 #	See
