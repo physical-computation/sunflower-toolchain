@@ -15,7 +15,7 @@ PRINTF_TAR=v${PRINTF_VER}.tar.gz
 
 wget	ftp://ftp.gnu.org/pub/gnu/gcc/$GCC_VER/$GCC_TAR
 wget	ftp://ftp.gnu.org/pub/gnu/binutils/$BINUTILS_TAR
-wget	ftp://sources.redhat.com/pub/newlib/$NEWLIB_TAR
+wget	ftp://sourceware.org/pub/newlib/$NEWLIB_TAR
 wget	https://github.com/mpaland/printf/archive/$PRINTF_TAR
 
 tar -xvf $GCC_TAR
