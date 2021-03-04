@@ -3,7 +3,7 @@ Installation Instructions
 
 Step 1
 ------
-Building the gcc cross-compilers depends on `wget`, `gcc`, `libmpc`, `mpfr`, `gmp`, `gcc-multilib`, and `g++-multilib`, so make sure you have them installed or the cross-compiler build will fail. (You will likely run into issues trying to build the cross-compiler using `clang`.)
+Building the gcc cross-compilers depends on `wget`, `gcc`, `libmpc`, `mpfr`, `gmp`, `gcc-multilib`, and `g++-multilib`, so make sure you have them installed or the cross-compiler build will fail. (You will likely run into issues trying to build the cross-compiler using `clang`.) These can be insatlled via `apt` using the command `sudo apt install wget gcc libmpc-dev libmpfr-dev libgmp-dev gcc-multilib g++-multilib`.
 
 **On macOS High Sierra:** you will need to install gcc (as opposed to using the gcc alias on modern macOS that is just an alias for clang). Because of various design choices made in the implementation of gcc (mixing of C and C++ conventions for source file name extensions), you will need to have a separate `g++` binary that treats its input as either a C++ source or a C++ object file. (You won't be able to get away with calling gcc with `-x c++ -lstdc++ -shared-libgcc`.) One version of gcc that fulfills this requirement is gcc version 4.9. MacPorts no longer installs separate binaries for `gcc` versus `g++`, so you will need to use Homebrew (or some other alternative) to install `gcc-4.9` and to set the `TOOLCC` and `TOOLCXX` appropriately to this `gcc-4.9` (more details below).
 
